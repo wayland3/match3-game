@@ -455,16 +455,18 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    // 音效 + 连击横幅
+    // 消除中心：庆祝特效的锚点
+    const cx = matches.cells.reduce((s, p) => s + cellX(p.col), 0) / matches.cells.length
+    const cy = matches.cells.reduce((s, p) => s + cellY(p.row), 0) / matches.cells.length
+
+    // 音效 + 连击横幅（在消除位置庆祝）
     this.sfx.pop(combo)
     if (combo >= 2) {
       this.sfx.fanfare(combo)
-      this.showComboBanner(combo)
+      this.showComboBanner(combo, cx, cy)
     }
 
     // 大消除：冲击波 + 震屏
-    const cx = matches.cells.reduce((s, p) => s + cellX(p.col), 0) / matches.cells.length
-    const cy = matches.cells.reduce((s, p) => s + cellY(p.row), 0) / matches.cells.length
     if (matches.cells.length >= 4 || combo >= 2) this.shockwave(cx, cy)
     if (matches.cells.length >= 5 || combo >= 3) this.cameras.main.shake(130, 0.006)
 
@@ -712,12 +714,13 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private showComboBanner(combo: number): void {
+  /** 连击横幅：在消除中心庆祝（星星迸发 + 光晕扩散） */
+  private showComboBanner(combo: number, ox: number, oy: number): void {
     this.comboBanner?.destroy()
     const word = COMBO_WORDS[Math.min(combo, 5)] ?? '疯狂连消'
     const color = ['#ffffff', '#ffd93d', '#ff9f43', '#ff6b6b', '#b983ff'][Math.min(combo - 2, 4)]
-    const cx = GAME_WIDTH / 2
-    const cy = boardOriginY + boardPixelHeight / 2 - 40
+    const cx = Phaser.Math.Clamp(ox, boardOriginX + 200, boardOriginX + boardPixelWidth - 200)
+    const cy = Phaser.Math.Clamp(oy, boardOriginY + 70, boardOriginY + boardPixelHeight - 70)
     // 背后光晕
     const halo = this.add
       .image(cx, cy, 'ring')
