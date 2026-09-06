@@ -34,7 +34,7 @@ export class Board {
           this.grid[r][c] = this.randomColorAvoidingMatch(r, c)
         }
       }
-    } while (!this.hasValidMove())
+    } while (this.countValidMoves() < 3) // 开局保证至少 3 个可行移动
   }
 
   /** 生成颜色时避开已形成的三连 */
@@ -164,12 +164,35 @@ export class Board {
         }
       }
     }
+    // 体贴机制：稳态（无现成三连）却无解时，重roll 新方块颜色，尽量保证有解
+    let tries = 0
+    while (this.findMatches().count === 0 && !this.hasValidMove() && tries < 12) {
+      for (const f of filled) {
+        const color = Math.floor(Math.random() * COLOR_COUNT)
+        f.color = color
+        this.grid[f.pos.row][f.pos.col] = color
+      }
+      tries++
+    }
     return filled
   }
 
   /** 是否存在至少一个可消除的交换 */
   hasValidMove(): boolean {
     return this.findHint() !== null
+  }
+
+  /** 统计可行移动数量 */
+  countValidMoves(): number {
+    let n = 0
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const a = { row: r, col: c }
+        if (c + 1 < COLS && this.wouldMatch(a, { row: r, col: c + 1 })) n++
+        if (r + 1 < ROWS && this.wouldMatch(a, { row: r + 1, col: c })) n++
+      }
+    }
+    return n
   }
 
   /** 找一个可行移动作为提示 */

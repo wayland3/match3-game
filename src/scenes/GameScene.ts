@@ -77,6 +77,7 @@ export class GameScene extends Phaser.Scene {
     this.selected = null
     this.board.reset()
     this.best = Number(localStorage.getItem(BEST_KEY) ?? 0) || 0
+    this.lastActionAt = this.time.now
 
     this.drawBackground()
     this.createHud()
@@ -178,6 +179,40 @@ export class GameScene extends Phaser.Scene {
 
   private themeBtnText: Phaser.GameObjects.Text | null = null
   private themeSwitching = false
+  private lastActionAt = 0
+
+  /** 发呆 8 秒自动轻提示一个可行交换；任何操作/动画都会重置计时 */
+  update(time: number): void {
+    if (this.busy || this.selected || this.themeSwitching) {
+      this.lastActionAt = time
+      return
+    }
+    if (time - this.lastActionAt > 8000) {
+      this.lastActionAt = time
+      this.softHint()
+    }
+  }
+
+  /** 轻量提示：两个可交换方块轻微跳动几下 */
+  private softHint(): void {
+    const hint = this.board.findHint()
+    if (!hint) return
+    for (const p of hint) {
+      const s = this.spriteAt(p)
+      if (!s) continue
+      this.tweens.killTweensOf(s)
+      s.setScale(BS)
+      this.tweens.add({
+        targets: s,
+        scaleX: BS * 1.12,
+        scaleY: BS * 0.82,
+        duration: 200,
+        yoyo: true,
+        repeat: 4,
+        ease: 'Sine.easeInOut'
+      })
+    }
+  }
 
   private createButtons(): void {
     const y = boardOriginY + boardPixelHeight + 78
@@ -571,7 +606,12 @@ export class GameScene extends Phaser.Scene {
     if (matches.cells.length >= 5 || combo >= 3) this.cameras.main.shake(130, 0.006)
 
     // 消除动画：先弹一下再缩没（每个方块错开 15ms），精确等待全部完成
-    const gained = matches.cells.length * SCORE_PER_BLOCK * combo
+    let gained = matches.cells.length * SCORE_PER_BLOCK * combo
+    if (matches.cells.length >= 4) {
+      const bonus = (matches.cells.length - 3) * 40 * combo
+      gained += bonus
+      this.floatScore(cx, cy - 70, `${matches.cells.length}连奖励 +${bonus}!`, combo + 1)
+    }
     this.addScore(gained)
     const jobs: Promise<void>[] = []
     matches.cells.forEach((p, idx) => {
