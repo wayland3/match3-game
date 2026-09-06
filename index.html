@@ -4,18 +4,66 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="消消乐" />
   <meta name="theme-color" content="#1a1a2e" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon-180.png" />
+  <link rel="icon" type="image/png" href="./icon-192.png" />
   <title>消消乐</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }
     #game { width: 100%; height: 100%; }
     canvas { display: block; touch-action: none; -webkit-tap-highlight-color: transparent; }
+
+    /* iOS 添加到主屏幕引导层 */
+    #ios-guide {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.82); backdrop-filter: blur(4px);
+      color: #fff; font-family: -apple-system, "PingFang SC", sans-serif;
+    }
+    #ios-guide.show { display: flex; }
+    #ios-guide .panel {
+      margin: auto; width: min(86vw, 420px); padding: 28px 26px;
+      background: linear-gradient(160deg, #2e4a7d, #1a1a2e);
+      border-radius: 22px; border: 1px solid rgba(255,255,255,0.18);
+      text-align: center;
+    }
+    #ios-guide h2 { font-size: 22px; margin-bottom: 18px; }
+    #ios-guide .step {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255,255,255,0.08); border-radius: 14px;
+      padding: 12px 14px; margin-bottom: 12px; font-size: 15px; line-height: 1.5;
+      text-align: left;
+    }
+    #ios-guide .step b { color: #ffd93d; }
+    #ios-guide .n {
+      flex: 0 0 26px; height: 26px; border-radius: 50%;
+      background: #ffd93d; color: #1a1a2e; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    #ios-guide .ic { font-size: 22px; }
+    #ios-guide button {
+      margin-top: 8px; width: 100%; padding: 14px; border: none; border-radius: 14px;
+      background: #ffd93d; color: #1a1a2e; font-size: 17px; font-weight: 700;
+    }
   </style>
 </head>
 <body>
   <div id="game"></div>
+
+  <div id="ios-guide">
+    <div class="panel">
+      <h2>📱 添加到桌面</h2>
+      <div class="step"><span class="n">1</span><span>点击浏览器底部工具栏的 <b class="ic">⬆️</b> <b>分享</b> 按钮</span></div>
+      <div class="step"><span class="n">2</span><span>向下滑动，找到 <b class="ic">➕</b> <b>添加到主屏幕</b></span></div>
+      <div class="step"><span class="n">3</span><span>点右上角 <b>添加</b>，像 App 一样全屏游玩</span></div>
+      <button id="ios-guide-close">我知道了</button>
+    </div>
+  </div>
+
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

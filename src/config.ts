@@ -18,6 +18,22 @@ export const COLORS: number[] = [
 
 export const COLOR_NAMES = ['红', '黄', '绿', '蓝', '紫']
 
+export interface Theme {
+  id: string
+  name: string
+  emojis: string[]
+}
+
+/** 图标主题：与 COLORS 一一对应，共 4 组 */
+export const THEMES: Theme[] = [
+  { id: 'animal', name: '动物', emojis: ['🐷', '🐥', '🐸', '🐧', '🦄'] },
+  { id: 'fruit', name: '水果', emojis: ['🍓', '🍊', '🍋', '🫐', '🍇'] },
+  { id: 'sky', name: '星空', emojis: ['☀️', '🌙', '⭐', '🌈', '❄️'] },
+  { id: 'sweet', name: '甜品', emojis: ['🍩', '🍪', '🧁', '🍫', '🍦'] }
+]
+
+export const THEME_KEY = 'match3-theme'
+
 export const SCORE_PER_BLOCK = 10
 
 export const boardPixelWidth = COLS * (BLOCK_SIZE + BLOCK_GAP) + BLOCK_GAP

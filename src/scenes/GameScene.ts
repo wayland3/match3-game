@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import {
   GAME_WIDTH, GAME_HEIGHT, ROWS, COLS, COLORS,
-  BLOCK_SIZE, BLOCK_GAP, SCORE_PER_BLOCK,
+  BLOCK_SIZE, BLOCK_GAP, SCORE_PER_BLOCK, THEMES, THEME_KEY,
   boardOriginX, boardOriginY, boardPixelWidth, boardPixelHeight,
   cellX, cellY
 } from '../config'
@@ -9,6 +9,12 @@ import { Board, Pos } from '../core/Board'
 import { Sfx } from '../audio/Sfx'
 
 type BlockSprite = Phaser.GameObjects.Image
+
+declare global {
+  interface Window {
+    __pwaPrompt?: Event & { prompt: () => Promise<void>; userChoice?: Promise<unknown> }
+  }
+}
 
 const BEST_KEY = 'match3-best'
 const DRAG_THRESHOLD = 24
@@ -40,9 +46,16 @@ export class GameScene extends Phaser.Scene {
   private comboBanner: Phaser.GameObjects.Text | null = null
 
   private sfx = new Sfx()
+  private themeId: string
 
   constructor() {
     super('Game')
+    const saved = localStorage.getItem(THEME_KEY)
+    this.themeId = THEMES.some(t => t.id === saved) ? saved! : THEMES[0].id
+  }
+
+  private blockKey(color: number): string {
+    return `block_${this.themeId}_${color}`
   }
 
   create(): void {
@@ -147,12 +160,14 @@ export class GameScene extends Phaser.Scene {
 
   private createButtons(): void {
     const y = boardOriginY + boardPixelHeight + 78
-    this.makeButton(GAME_WIDTH / 2 - 120, y, '💡 提示', () => this.onHint())
-    this.makeButton(GAME_WIDTH / 2 + 120, y, '🔄 重开', () => this.scene.restart())
+    this.makeButton(GAME_WIDTH / 2 - 240, y, '💡 提示', () => this.onHint(), 220)
+    this.makeButton(GAME_WIDTH / 2, y, '🎨 主题', () => this.cycleTheme(), 220)
+    this.makeButton(GAME_WIDTH / 2 + 240, y, '🔄 重开', () => this.scene.restart(), 220)
+    this.createInstallButton()
   }
 
-  private makeButton(x: number, y: number, label: string, onTap: () => void): void {
-    const w = 200, h = 72
+  private makeButton(x: number, y: number, label: string, onTap: () => void, w = 200): void {
+    const h = 72
     const g = this.add.graphics({ x, y }).setDepth(5)
     g.fillStyle(0x2e4a7d, 1)
     g.fillRoundedRect(-w / 2, -h / 2, w, h, 20)
@@ -172,10 +187,74 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
+  /** 顶部"添加到桌面"按钮：仅未安装且环境支持时显示 */
+  private createInstallButton(): void {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    if (standalone || (!isIOS && !window.__pwaPrompt)) return
+
+    this.makeButton(GAME_WIDTH - 90, 70, '📲 桌面', () => this.onInstall(), 150)
+  }
+
+  private onInstall(): void {
+    const ev = window.__pwaPrompt
+    if (ev) {
+      void ev.prompt()
+      window.__pwaPrompt = undefined
+    } else {
+      document.getElementById('ios-guide')?.classList.add('show')
+    }
+  }
+
+  /** 切换图标主题：波浪翻面动画 */
+  private async cycleTheme(): Promise<void> {
+    if (this.busy) return
+    this.busy = true
+    this.clearSelection()
+    const idx = THEMES.findIndex(t => t.id === this.themeId)
+    const next = THEMES[(idx + 1) % THEMES.length]
+    this.themeId = next.id
+    localStorage.setItem(THEME_KEY, next.id)
+    this.sfx.theme()
+    this.showToast(`主题：${next.emojis.join(' ')} ${next.name}组`)
+
+    const jobs: Promise<void>[] = []
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const s = this.sprites[r][c]
+        const color = this.board.grid[r][c]!
+        if (!s) continue
+        jobs.push(
+          tweenP(this, {
+            targets: s,
+            scaleX: 0,
+            duration: 150,
+            delay: (r + c) * 12,
+            ease: 'Quad.easeIn',
+            onComplete: () => {
+              s.setTexture(this.blockKey(color))
+              this.tweens.add({
+                targets: s,
+                scaleX: 1,
+                duration: 200,
+                ease: 'Back.easeOut'
+              })
+            }
+          })
+        )
+      }
+    }
+    await Promise.all(jobs)
+    await new Promise(res => this.time.delayedCall(240, () => res(undefined)))
+    this.busy = false
+  }
+
   // ---------- 棋盘精灵 ----------
 
   private makeSprite(row: number, col: number, color: number): BlockSprite {
-    const s = this.add.image(cellX(col), cellY(row), `block_${color}`).setDepth(10)
+    const s = this.add.image(cellX(col), cellY(row), this.blockKey(color)).setDepth(10)
     s.setData('row', row)
     s.setData('col', col)
     s.setData('color', color)
@@ -492,7 +571,7 @@ export class GameScene extends Phaser.Scene {
         const s = this.sprites[r][c]
         const color = this.board.grid[r][c]!
         if (s) {
-          s.setTexture(`block_${color}`)
+          s.setTexture(this.blockKey(color))
           s.setData('color', color)
           jobs2.push(tweenP(this, { targets: s, scale: 1, duration: 260, delay: (r + c) * 12, ease: 'Back.easeOut' }))
         }

@@ -69,4 +69,10 @@ export class Sfx {
       this.tone(300 + i * 60, 0.05, { type: 'triangle', gain: 0.05, delay: i * 0.05 })
     }
   }
+
+  /** 主题切换：俏皮双音 */
+  theme(): void {
+    this.tone(660, 0.09, { type: 'triangle', gain: 0.12 })
+    this.tone(990, 0.12, { type: 'triangle', gain: 0.12, delay: 0.08 })
+  }
 }

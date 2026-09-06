@@ -1,8 +1,6 @@
 import Phaser from 'phaser'
-import { COLORS, BLOCK_SIZE } from '../config'
+import { COLORS, BLOCK_SIZE, THEMES } from '../config'
 
-/** 可爱动物角色，与 COLORS 一一对应 */
-export const EMOJIS = ['🐷', '🐥', '🐸', '🐧', '🦄']
 const EMOJI_FONT = `'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif`
 
 /** 颜色明暗调整：amt ∈ [-1,1] */
@@ -37,8 +35,9 @@ export class BootScene extends Phaser.Scene {
   private makeTextures(): void {
     const S = BLOCK_SIZE + 10
 
-    // 方块纹理：彩色糖球底托 + 可爱动物 emoji
-    COLORS.forEach((color, i) => {
+    // 方块纹理：彩色糖球底托 + 主题 emoji（为全部主题生成 block_{themeId}_{colorIdx}）
+    for (const theme of THEMES) {
+      COLORS.forEach((color, i) => {
       const g = new Phaser.GameObjects.Graphics(this)
       // 底部投影
       g.fillStyle(0x000000, 0.3)
@@ -61,14 +60,15 @@ export class BootScene extends Phaser.Scene {
       const rt = this.add.renderTexture(0, 0, S, S).setOrigin(0, 0)
       rt.draw(g)
       const emoji = this.add
-        .text(0, 0, EMOJIS[i], { fontFamily: EMOJI_FONT, fontSize: '58px' })
+        .text(0, 0, theme.emojis[i], { fontFamily: EMOJI_FONT, fontSize: '58px' })
         .setOrigin(0.5)
       rt.draw(emoji, S / 2, S / 2 + 3)
-      rt.saveTexture(`block_${i}`)
+      rt.saveTexture(`block_${theme.id}_${i}`)
       emoji.destroy()
       g.destroy()
       rt.destroy()
-    })
+      })
+    }
 
     // 选中光环
     {
