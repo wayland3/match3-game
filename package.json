@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test:logic": "tsx test/board.test.ts"
+    "test:logic": "tsx test/board.test.ts",
+    "test:fuzz": "tsx test/board.fuzz.test.ts"
   },
   "dependencies": {
     "phaser": "^3.87.0"

@@ -62,6 +62,7 @@ export class GameScene extends Phaser.Scene {
     this.score = 0
     this.busy = true
     this.selected = null
+    this.board.reset()
     this.best = Number(localStorage.getItem(BEST_KEY) ?? 0) || 0
 
     this.drawBackground()
@@ -452,40 +453,38 @@ export class GameScene extends Phaser.Scene {
       this.showComboBanner(combo)
     }
 
-    // 消除动画（每个方块错开 15ms）
+    // 消除动画：先弹一下再缩没（每个方块错开 15ms），精确等待全部完成
     const gained = matches.cells.length * SCORE_PER_BLOCK * combo
     this.addScore(gained)
     const jobs: Promise<void>[] = []
-    for (const p of matches.cells) {
+    matches.cells.forEach((p, idx) => {
       const s = this.spriteAt(p)
-      if (!s) continue
+      if (!s) return
       this.setSpriteAt(p, null)
       this.burst(s.x, s.y, COLORS[this.board.grid[p.row][p.col] ?? 0])
-      this.floatScore(s.x, s.y, `+${matches.cells.length > 0 ? SCORE_PER_BLOCK * combo : 0}`, combo)
+      this.floatScore(s.x, s.y, `+${SCORE_PER_BLOCK * combo}`, combo)
       const sprite = s
-      const idx = matches.cells.indexOf(p)
       jobs.push(
-        tweenP(this, {
-          targets: sprite,
-          scale: 1.35,
-          duration: 80,
-          delay: idx * 15,
-          yoyo: true,
-          onComplete: () => {
-            this.tweens.add({
-              targets: sprite,
-              scale: 0,
-              angle: Phaser.Math.Between(-90, 90),
-              alpha: 0,
-              duration: 140,
-              onComplete: () => sprite.destroy()
-            })
-          }
-        })
+        (async () => {
+          await tweenP(this, {
+            targets: sprite,
+            scale: 1.35,
+            duration: 80,
+            delay: idx * 15,
+            yoyo: true
+          })
+          await tweenP(this, {
+            targets: sprite,
+            scale: 0,
+            angle: Phaser.Math.Between(-90, 90),
+            alpha: 0,
+            duration: 140
+          })
+          sprite.destroy()
+        })()
       )
-    }
-    // 等两段动画都结束（用固定时长更简单可靠）
-    await new Promise(res => this.time.delayedCall(matches.cells.length * 15 + 320, () => res(undefined)))
+    })
+    await Promise.all(jobs)
     this.board.removeCells(matches.cells)
 
     await this.fallAndFill()
@@ -538,6 +537,48 @@ export class GameScene extends Phaser.Scene {
 
     if (jobs.length > 0) this.sfx.land()
     await Promise.all(jobs)
+    this.verifySync('fall')
+  }
+
+  /**
+   * 防御性强一致校验：强制 sprites 与 board 数据对齐。
+   * 任何未知的时序错位在这里被发现并立即自愈（含 console.warn 上报）。
+   */
+  private verifySync(tag: string): void {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const color = this.board.grid[r][c]
+        let s = this.sprites[r][c]
+        if (color === null) {
+          if (s) {
+            console.warn(`[sync:${tag}] 多余精灵 (${r},${c})，销毁`)
+            this.tweens.killTweensOf(s)
+            s.destroy()
+            this.sprites[r][c] = null
+          }
+          continue
+        }
+        if (!s) {
+          console.warn(`[sync:${tag}] 缺失精灵 (${r},${c})，重建`)
+          s = this.makeSprite(r, c, color)
+          this.sprites[r][c] = s
+          continue
+        }
+        const cur = s.getData('color') as number
+        if (cur !== color) {
+          console.warn(`[sync:${tag}] 颜色错位 (${r},${c}) ${cur} != ${color}，修正`)
+          this.tweens.killTweensOf(s)
+          s.setTexture(this.blockKey(color))
+          s.setScale(1)
+          s.setData('color', color)
+        }
+        if (Math.abs(s.x - cellX(c)) > 2 || Math.abs(s.y - cellY(r)) > 2) {
+          console.warn(`[sync:${tag}] 位置错位 (${r},${c})，校正`)
+          s.setPosition(cellX(c), cellY(r))
+        }
+        s.setData('row', r).setData('col', c)
+      }
+    }
   }
 
   /** 落地挤压回弹 */
@@ -578,6 +619,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     await Promise.all(jobs2)
+    this.verifySync('shuffle')
   }
 
   // ---------- 特效 ----------
@@ -678,6 +720,7 @@ export class GameScene extends Phaser.Scene {
 
   private onHint(): void {
     if (this.busy) return
+    this.verifySync('hint')
     const hint = this.board.findHint()
     if (!hint) {
       this.showToast('暂无可提示的移动')
