@@ -22,6 +22,11 @@ const FALL_SPEED = 1300 // px/s
 
 const COMBO_WORDS: Record<number, string> = { 2: '连击', 3: '漂亮', 4: '厉害', 5: '超神' }
 
+/** 2x 纹理基准缩放（Retina 清晰度） */
+const BS = 0.5
+/** 文字渲染分辨率 */
+const TEXT_RES = 2
+
 function tweenP(scene: Phaser.Scene, config: Phaser.Types.Tweens.TweenBuilderConfig): Promise<void> {
   return new Promise(resolve => {
     scene.tweens.add({ ...config, onComplete: () => resolve() })
@@ -108,26 +113,29 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createHud(): void {
-    const title = this.add.text(GAME_WIDTH / 2, 64, '🐷 消消乐 🦄', {
+    const title = this.add.text(GAME_WIDTH / 2, 64, '消消乐', {
       fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
       fontSize: '52px',
       color: '#ffffff',
       fontStyle: 'bold',
       stroke: '#0f3460',
-      strokeThickness: 8
+      strokeThickness: 8,
+      resolution: TEXT_RES
     }).setOrigin(0.5).setDepth(5)
 
     this.scoreText = this.add.text(GAME_WIDTH / 2, 132, '分数 0', {
       fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
       fontSize: '34px',
       color: '#ffd93d',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: TEXT_RES
     }).setOrigin(0.5).setDepth(5)
 
     this.bestText = this.add.text(GAME_WIDTH / 2, 178, `最高 ${this.best}`, {
       fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
       fontSize: '24px',
-      color: '#9fb3c8'
+      color: '#9fb3c8',
+      resolution: TEXT_RES
     }).setOrigin(0.5).setDepth(5)
 
     this.tweens.add({
@@ -178,7 +186,8 @@ export class GameScene extends Phaser.Scene {
       fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
       fontSize: '30px',
       color: '#ffffff',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: TEXT_RES
     }).setOrigin(0.5).setDepth(6)
     const hit = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true })
     hit.on('pointerdown', () => {
@@ -238,7 +247,7 @@ export class GameScene extends Phaser.Scene {
               s.setTexture(this.blockKey(color))
               this.tweens.add({
                 targets: s,
-                scaleX: 1,
+                scaleX: BS,
                 duration: 200,
                 ease: 'Back.easeOut'
               })
@@ -255,7 +264,7 @@ export class GameScene extends Phaser.Scene {
   // ---------- 棋盘精灵 ----------
 
   private makeSprite(row: number, col: number, color: number): BlockSprite {
-    const s = this.add.image(cellX(col), cellY(row), this.blockKey(color)).setDepth(10)
+    const s = this.add.image(cellX(col), cellY(row), this.blockKey(color)).setDepth(10).setScale(BS)
     s.setData('row', row)
     s.setData('col', col)
     s.setData('color', color)
@@ -365,10 +374,10 @@ export class GameScene extends Phaser.Scene {
     this.sfx.select()
     const s = this.spriteAt(cell)
     if (!s) return
-    this.selectedRing.setPosition(s.x, s.y).setVisible(true).setAlpha(1).setScale(0.6)
+    this.selectedRing.setPosition(s.x, s.y).setVisible(true).setAlpha(1).setScale(0.3)
     this.tweens.add({
       targets: this.selectedRing,
-      scale: 1,
+      scale: BS,
       duration: 320,
       ease: 'Back.easeOut',
       yoyo: false
@@ -376,18 +385,18 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.selectedRing,
       alpha: 0.45,
-      scale: 1.12,
+      scale: 0.56,
       duration: 500,
       yoyo: true,
       repeat: -1
     })
-    this.tweens.add({ targets: s, scale: 1.14, duration: 120, yoyo: false })
+    this.tweens.add({ targets: s, scale: BS * 1.14, duration: 120, yoyo: false })
   }
 
   private clearSelection(): void {
     if (this.selected) {
       const s = this.spriteAt(this.selected)
-      if (s) this.tweens.add({ targets: s, scale: 1, duration: 120 })
+      if (s) this.tweens.add({ targets: s, scale: BS, duration: 120 })
     }
     this.selected = null
     this.tweens.killTweensOf(this.selectedRing)
@@ -468,7 +477,7 @@ export class GameScene extends Phaser.Scene {
         (async () => {
           await tweenP(this, {
             targets: sprite,
-            scale: 1.35,
+            scale: BS * 1.35,
             duration: 80,
             delay: idx * 15,
             yoyo: true
@@ -569,7 +578,7 @@ export class GameScene extends Phaser.Scene {
           console.warn(`[sync:${tag}] 颜色错位 (${r},${c}) ${cur} != ${color}，修正`)
           this.tweens.killTweensOf(s)
           s.setTexture(this.blockKey(color))
-          s.setScale(1)
+          s.setScale(BS)
           s.setData('color', color)
         }
         if (Math.abs(s.x - cellX(c)) > 2 || Math.abs(s.y - cellY(r)) > 2) {
@@ -585,8 +594,8 @@ export class GameScene extends Phaser.Scene {
   private squash(s: BlockSprite): void {
     this.tweens.add({
       targets: s,
-      scaleY: 0.78,
-      scaleX: 1.15,
+      scaleY: BS * 0.78,
+      scaleX: BS * 1.15,
       duration: 55,
       yoyo: true,
       ease: 'Quad.easeOut'
@@ -614,7 +623,7 @@ export class GameScene extends Phaser.Scene {
         if (s) {
           s.setTexture(this.blockKey(color))
           s.setData('color', color)
-          jobs2.push(tweenP(this, { targets: s, scale: 1, duration: 260, delay: (r + c) * 12, ease: 'Back.easeOut' }))
+          jobs2.push(tweenP(this, { targets: s, scale: BS, duration: 260, delay: (r + c) * 12, ease: 'Back.easeOut' }))
         }
       }
     }
@@ -662,7 +671,8 @@ export class GameScene extends Phaser.Scene {
         color: '#ffd93d',
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 4
+        strokeThickness: 4,
+        resolution: TEXT_RES
       })
       .setOrigin(0.5)
       .setDepth(30)
@@ -687,7 +697,8 @@ export class GameScene extends Phaser.Scene {
         color,
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 10
+        strokeThickness: 10,
+        resolution: TEXT_RES
       })
       .setOrigin(0.5)
       .setDepth(40)
@@ -709,7 +720,8 @@ export class GameScene extends Phaser.Scene {
       .text(GAME_WIDTH / 2, 268, msg, {
         fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
         fontSize: '26px',
-        color: '#ffffff'
+        color: '#ffffff',
+        resolution: TEXT_RES
       })
       .setOrigin(0.5)
       .setDepth(51)
@@ -731,11 +743,11 @@ export class GameScene extends Phaser.Scene {
     for (const p of hint) {
       const s = this.spriteAt(p)
       if (!s) continue
-      const ring = this.add.image(s.x, s.y, 'ring').setDepth(15).setTint(0xffd93d).setScale(0.7)
+      const ring = this.add.image(s.x, s.y, 'ring').setDepth(15).setTint(0xffd93d).setScale(0.35)
       this.hintRings.push(ring)
       this.tweens.add({
         targets: [ring, s],
-        scale: '+=0.12',
+        scale: '+=0.06',
         duration: 300,
         yoyo: true,
         repeat: 3
@@ -746,7 +758,7 @@ export class GameScene extends Phaser.Scene {
       this.hintRings = []
       hint.forEach(p => {
         const s = this.spriteAt(p)
-        if (s) this.tweens.add({ targets: s, scale: 1, duration: 150 })
+        if (s) this.tweens.add({ targets: s, scale: BS, duration: 150 })
       })
     })
   }

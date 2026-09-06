@@ -33,7 +33,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   private makeTextures(): void {
-    const S = BLOCK_SIZE + 10
+    // 2x 分辨率生成，GameScene 以 0.5 基准缩放显示，保证 Retina 屏清晰
+    const S = (BLOCK_SIZE + 10) * 2
 
     // 方块纹理：彩色糖球底托 + 主题 emoji（为全部主题生成 block_{themeId}_{colorIdx}）
     for (const theme of THEMES) {
@@ -41,28 +42,28 @@ export class BootScene extends Phaser.Scene {
       const g = new Phaser.GameObjects.Graphics(this)
       // 底部投影
       g.fillStyle(0x000000, 0.3)
-      g.fillCircle(S / 2 + 2, S / 2 + 5, S / 2 - 3)
+      g.fillCircle(S / 2 + 4, S / 2 + 10, S / 2 - 6)
       // 白色描边
       g.fillStyle(0xffffff, 1)
-      g.fillCircle(S / 2, S / 2, S / 2 - 3)
+      g.fillCircle(S / 2, S / 2, S / 2 - 6)
       // 主题浅色底
       g.fillStyle(mixWhite(color, 0.66), 1)
-      g.fillCircle(S / 2, S / 2, S / 2 - 7)
+      g.fillCircle(S / 2, S / 2, S / 2 - 14)
       // 左上高光泡泡
       g.fillStyle(0xffffff, 0.9)
-      g.fillEllipse(S * 0.34, S * 0.28, 18, 11)
-      g.fillCircle(S * 0.28, S * 0.22, 3.5)
+      g.fillEllipse(S * 0.34, S * 0.28, 36, 22)
+      g.fillCircle(S * 0.28, S * 0.22, 7)
       // 底部立体暗弧
       g.fillStyle(shade(color, -0.12), 0.55)
-      g.slice(S / 2, S / 2, S / 2 - 7, Phaser.Math.DegToRad(35), Phaser.Math.DegToRad(145), false)
+      g.slice(S / 2, S / 2, S / 2 - 14, Phaser.Math.DegToRad(35), Phaser.Math.DegToRad(145), false)
       g.fillPath()
 
       const rt = this.add.renderTexture(0, 0, S, S).setOrigin(0, 0)
       rt.draw(g)
       const emoji = this.add
-        .text(0, 0, theme.emojis[i], { fontFamily: EMOJI_FONT, fontSize: '58px' })
+        .text(0, 0, theme.emojis[i], { fontFamily: EMOJI_FONT, fontSize: '116px' })
         .setOrigin(0.5)
-      rt.draw(emoji, S / 2, S / 2 + 3)
+      rt.draw(emoji, S / 2, S / 2 + 6)
       rt.saveTexture(`block_${theme.id}_${i}`)
       emoji.destroy()
       g.destroy()
@@ -70,14 +71,14 @@ export class BootScene extends Phaser.Scene {
       })
     }
 
-    // 选中光环
+    // 选中光环（2x）
     {
       const g = new Phaser.GameObjects.Graphics(this)
-      g.lineStyle(5, 0xffffff, 1)
-      g.strokeCircle(52, 52, 48)
-      g.lineStyle(10, 0xffffff, 0.25)
-      g.strokeCircle(52, 52, 54)
-      g.generateTexture('ring', 108, 108)
+      g.lineStyle(10, 0xffffff, 1)
+      g.strokeCircle(104, 104, 96)
+      g.lineStyle(20, 0xffffff, 0.25)
+      g.strokeCircle(104, 104, 108)
+      g.generateTexture('ring', 216, 216)
       g.destroy()
     }
 
