@@ -253,7 +253,7 @@ export class GameScene extends Phaser.Scene {
       /* iOS 隐私模式等场景忽略 */
     }
     this.sfx.theme()
-    this.showToast(`主题：${next.emojis.join(' ')} ${next.name}组`)
+    this.showToast(`主题：${next.labels ? `${next.labels.join(' ')} ${next.name}组` : `${next.emojis.join(' ')} ${next.name}组`}`)
     this.themeBtnText?.setText(`🎨 ${next.icon ?? next.emojis[0]}`)
 
     const jobs: Promise<void>[] = []

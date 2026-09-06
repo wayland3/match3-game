@@ -24,12 +24,20 @@ export interface Theme {
   emojis: string[]
   /** 主题按钮上显示的代表角色，默认取 emojis[0] */
   icon?: string
+  /** 代码绘制型主题（不用 emoji） */
+  drawing?: 'dogs'
+  /** toast 中显示的品种名 */
+  labels?: string[]
 }
 
 /** 图标主题：与 COLORS 一一对应，共 5 组 */
 export const THEMES: Theme[] = [
   { id: 'animal', name: '动物', emojis: ['🐷', '🐥', '🐸', '🐧', '🐶'], icon: '🐶' },
-  { id: 'dog', name: '狗狗', emojis: ['🐶', '🐕', '🐩', '🐺', '🦮'], icon: '🐕' },
+  {
+    id: 'dog', name: '狗狗', drawing: 'dogs', icon: '🐕',
+    labels: ['金毛', '比格', '比熊', '西高地', '哈士奇'],
+    emojis: ['🐶', '🐶', '🐶', '🐶', '🐶']
+  },
   { id: 'fruit', name: '水果', emojis: ['🍓', '🍊', '🍋', '🫐', '🍇'] },
   { id: 'sky', name: '星空', emojis: ['☀️', '🌙', '⭐', '🌈', '❄️'] },
   { id: 'sweet', name: '甜品', emojis: ['🍩', '🍪', '🧁', '🍫', '🍦'] }
