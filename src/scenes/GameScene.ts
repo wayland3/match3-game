@@ -28,8 +28,15 @@ const BS = 0.5
 const TEXT_RES = 2
 
 function tweenP(scene: Phaser.Scene, config: Phaser.Types.Tweens.TweenBuilderConfig): Promise<void> {
+  const userComplete = config.onComplete as (() => void) | undefined
   return new Promise(resolve => {
-    scene.tweens.add({ ...config, onComplete: () => resolve() })
+    scene.tweens.add({
+      ...config,
+      onComplete: () => {
+        if (userComplete) userComplete()
+        resolve()
+      }
+    })
   })
 }
 
@@ -226,12 +233,25 @@ export class GameScene extends Phaser.Scene {
   /** 切换图标主题：波浪翻面动画。只换纹理不碰棋盘数据，任何时刻（含消除动画中）都安全即时 */
   private async cycleTheme(): Promise<void> {
     if (this.themeSwitching) return
-    this.themeSwitching = true
-    this.clearSelection()
     const idx = THEMES.findIndex(t => t.id === this.themeId)
     const next = THEMES[(idx + 1) % THEMES.length]
+    // 纹理防御：确认目标主题纹理存在
+    const missing = next.emojis.some((_, i) => !this.textures.exists(`block_${next.id}_${i}`))
+    if (missing) {
+      console.error(`主题 ${next.id} 纹理缺失，跳过切换`)
+      this.showToast('主题资源未就绪，无法切换')
+      return
+    }
+    this.themeSwitching = true
+    // 锁兜底：无论动画链发生什么，固定时长后必释放
+    this.time.delayedCall(900, () => { this.themeSwitching = false })
+    this.clearSelection()
     this.themeId = next.id
-    localStorage.setItem(THEME_KEY, next.id)
+    try {
+      localStorage.setItem(THEME_KEY, next.id)
+    } catch {
+      /* iOS 隐私模式等场景忽略 */
+    }
     this.sfx.theme()
     this.showToast(`主题：${next.emojis.join(' ')} ${next.name}组`)
     this.themeBtnText?.setText(`🎨 ${next.emojis[0]}`)
@@ -263,8 +283,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     await Promise.all(jobs)
-    await new Promise(res => this.time.delayedCall(240, () => res(undefined)))
-    this.themeSwitching = false
+    this.verifySync('theme')
   }
 
   // ---------- 棋盘精灵 ----------
@@ -598,6 +617,11 @@ export class GameScene extends Phaser.Scene {
         if (Math.abs(s.x - cellX(c)) > 2 || Math.abs(s.y - cellY(r)) > 2) {
           console.warn(`[sync:${tag}] 位置错位 (${r},${c})，校正`)
           s.setPosition(cellX(c), cellY(r))
+        }
+        if (Math.abs(s.scaleX - BS) > 0.02 || Math.abs(s.scaleY - BS) > 0.02) {
+          console.warn(`[sync:${tag}] 缩放异常 (${r},${c}) scaleX=${s.scaleX.toFixed(2)}，归位`)
+          this.tweens.killTweensOf(s)
+          s.setScale(BS)
         }
         s.setData('row', r).setData('col', c)
       }
