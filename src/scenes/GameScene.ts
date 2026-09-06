@@ -45,7 +45,8 @@ export class GameScene extends Phaser.Scene {
   private sprites: (BlockSprite | null)[][] = []
   private busy = true
   private selected: Pos | null = null
-  private selectedRing!: Phaser.GameObjects.Image
+  private selectedFrame: Phaser.GameObjects.Image | null = null
+  private selectStars: Phaser.GameObjects.Image[] = []
   private hintRings: Phaser.GameObjects.Image[] = []
   private startPointer: { x: number; y: number } | null = null
   private startCell: Pos | null = null
@@ -82,7 +83,8 @@ export class GameScene extends Phaser.Scene {
     this.createBoardFrame()
     this.createButtons()
 
-    this.selectedRing = this.add.image(0, 0, 'ring').setVisible(false).setDepth(15)
+    this.selectedFrame = null
+    this.selectStars = []
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointerDown(p))
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove(p))
@@ -393,39 +395,112 @@ export class GameScene extends Phaser.Scene {
     this.select(cell)
   }
 
+  /** 选中特效：闪环 + 金色四角瞄准框（弹出+呼吸）+ 双星环绕 + 方块呼吸放大 */
   private select(cell: Pos): void {
     this.clearSelection()
     this.selected = cell
     this.sfx.select()
     const s = this.spriteAt(cell)
     if (!s) return
-    this.selectedRing.setPosition(s.x, s.y).setVisible(true).setAlpha(1).setScale(0.3)
+    const x = s.x
+    const y = s.y
+
+    // 1. 选中瞬间白色闪环扩散
+    const flash = this.add.image(x, y, 'ring').setDepth(14).setTint(0xffffff).setScale(0.15).setAlpha(0.95)
     this.tweens.add({
-      targets: this.selectedRing,
-      scale: BS,
-      duration: 320,
-      ease: 'Back.easeOut',
-      yoyo: false
+      targets: flash,
+      scale: 0.7,
+      alpha: 0,
+      duration: 280,
+      ease: 'Cubic.easeOut',
+      onComplete: () => flash.destroy()
+    })
+
+    // 2. 金色四角瞄准框：弹性收拢 + 持续呼吸
+    const frame = this.add.image(x, y, 'select-frame').setDepth(15).setScale(BS * 1.6).setAlpha(0)
+    this.selectedFrame = frame
+    this.tweens.add({
+      targets: frame,
+      scale: BS * 1.06,
+      alpha: 1,
+      duration: 260,
+      ease: 'Back.easeOut'
     })
     this.tweens.add({
-      targets: this.selectedRing,
-      alpha: 0.45,
-      scale: 0.56,
-      duration: 500,
+      targets: frame,
+      scale: BS * 1.15,
+      duration: 640,
+      delay: 260,
       yoyo: true,
-      repeat: -1
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     })
-    this.tweens.add({ targets: s, scale: BS * 1.14, duration: 120, yoyo: false })
+
+    // 3. 两颗小星星绕方块公转
+    this.selectStars = [0, Math.PI].map(initAng => {
+      const star = this.add.image(x, y, 'star').setDepth(16).setTint(0xffd93d).setScale(0.3)
+      const orbit = { a: initAng }
+      this.tweens.add({
+        targets: orbit,
+        a: initAng + Math.PI * 2,
+        duration: 1900,
+        repeat: -1,
+        ease: 'Linear',
+        onUpdate: () => {
+          star.setPosition(x + Math.cos(orbit.a) * 62, y + Math.sin(orbit.a) * 62)
+          star.angle = orbit.a * 57.3
+        }
+      })
+      return star
+    })
+
+    // 4. 方块弹性放大 + 轻微呼吸
+    this.tweens.add({ targets: s, scale: BS * 1.18, duration: 180, ease: 'Back.easeOut' })
+    this.tweens.add({
+      targets: s,
+      scale: BS * 1.23,
+      duration: 800,
+      delay: 180,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    })
   }
 
   private clearSelection(): void {
     if (this.selected) {
       const s = this.spriteAt(this.selected)
-      if (s) this.tweens.add({ targets: s, scale: BS, duration: 120 })
+      if (s) {
+        this.tweens.killTweensOf(s)
+        this.tweens.add({ targets: s, scale: BS, duration: 140 })
+      }
     }
     this.selected = null
-    this.tweens.killTweensOf(this.selectedRing)
-    this.selectedRing.setVisible(false)
+    // 瞄准框收缩消失
+    if (this.selectedFrame) {
+      const f = this.selectedFrame
+      this.selectedFrame = null
+      this.tweens.killTweensOf(f)
+      this.tweens.add({
+        targets: f,
+        scale: BS * 0.5,
+        alpha: 0,
+        duration: 150,
+        onComplete: () => f.destroy()
+      })
+    }
+    // 环绕星星收回消失
+    this.selectStars.forEach(st => {
+      this.tweens.killTweensOf(st)
+      this.tweens.add({
+        targets: st,
+        scale: 0,
+        alpha: 0,
+        duration: 150,
+        onComplete: () => st.destroy()
+      })
+    })
+    this.selectStars = []
   }
 
   // ---------- 核心流程 ----------
@@ -833,6 +908,7 @@ export class GameScene extends Phaser.Scene {
 
   private onHint(): void {
     if (this.busy) return
+    this.clearSelection()
     this.verifySync('hint')
     const hint = this.board.findHint()
     if (!hint) {

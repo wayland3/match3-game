@@ -59,6 +59,31 @@ export class BootScene extends Phaser.Scene {
       })
     }
 
+    // 选中四角瞄准框（金色，双层营造发光感）
+    {
+      const g = new Phaser.GameObjects.Graphics(this)
+      const M = 200
+      const L = 42
+      const T = 12
+      const drawCorners = (inset: number, len: number, thick: number): void => {
+        g.fillRoundedRect(inset, inset, len, thick, 6)
+        g.fillRoundedRect(inset, inset, thick, len, 6)
+        g.fillRoundedRect(M - inset - len, inset, len, thick, 6)
+        g.fillRoundedRect(M - inset - thick, inset, thick, len, 6)
+        g.fillRoundedRect(inset, M - inset - thick, len, thick, 6)
+        g.fillRoundedRect(inset, M - inset - len, thick, len, 6)
+        g.fillRoundedRect(M - inset - len, M - inset - thick, len, thick, 6)
+        g.fillRoundedRect(M - inset - thick, M - inset - len, thick, len, 6)
+      }
+      // 外层光晕角 + 内层实色角
+      g.fillStyle(0xffd93d, 0.35)
+      drawCorners(0, L + 8, T + 6)
+      g.fillStyle(0xffd93d, 1)
+      drawCorners(6, L, T)
+      g.generateTexture('select-frame', M, M)
+      g.destroy()
+    }
+
     // 选中光环（2x）
     {
       const g = new Phaser.GameObjects.Graphics(this)
