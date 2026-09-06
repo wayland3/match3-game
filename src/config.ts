@@ -22,11 +22,13 @@ export interface Theme {
   id: string
   name: string
   emojis: string[]
+  /** 主题按钮上显示的代表角色，默认取 emojis[0] */
+  icon?: string
 }
 
 /** 图标主题：与 COLORS 一一对应，共 4 组 */
 export const THEMES: Theme[] = [
-  { id: 'animal', name: '动物', emojis: ['🐷', '🐥', '🐸', '🐧', '🐶'] },
+  { id: 'animal', name: '动物', emojis: ['🐷', '🐥', '🐸', '🐧', '🐶'], icon: '🐶' },
   { id: 'fruit', name: '水果', emojis: ['🍓', '🍊', '🍋', '🫐', '🍇'] },
   { id: 'sky', name: '星空', emojis: ['☀️', '🌙', '⭐', '🌈', '❄️'] },
   { id: 'sweet', name: '甜品', emojis: ['🍩', '🍪', '🧁', '🍫', '🍦'] }

@@ -181,7 +181,7 @@ export class GameScene extends Phaser.Scene {
     const y = boardOriginY + boardPixelHeight + 78
     this.makeButton(GAME_WIDTH / 2 - 240, y, '💡 提示', () => this.onHint(), 220)
     const cur = THEMES.find(t => t.id === this.themeId) ?? THEMES[0]
-    this.themeBtnText = this.makeButton(GAME_WIDTH / 2, y, `🎨 ${cur.emojis[0]}`, () => this.cycleTheme(), 220)
+    this.themeBtnText = this.makeButton(GAME_WIDTH / 2, y, `🎨 ${cur.icon ?? cur.emojis[0]}`, () => this.cycleTheme(), 220)
     this.makeButton(GAME_WIDTH / 2 + 240, y, '🔄 重开', () => this.scene.restart(), 220)
     this.createInstallButton()
   }
@@ -254,7 +254,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.sfx.theme()
     this.showToast(`主题：${next.emojis.join(' ')} ${next.name}组`)
-    this.themeBtnText?.setText(`🎨 ${next.emojis[0]}`)
+    this.themeBtnText?.setText(`🎨 ${next.icon ?? next.emojis[0]}`)
 
     const jobs: Promise<void>[] = []
     for (let r = 0; r < ROWS; r++) {
