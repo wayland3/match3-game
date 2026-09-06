@@ -167,15 +167,19 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private themeBtnText: Phaser.GameObjects.Text | null = null
+  private themeSwitching = false
+
   private createButtons(): void {
     const y = boardOriginY + boardPixelHeight + 78
     this.makeButton(GAME_WIDTH / 2 - 240, y, '💡 提示', () => this.onHint(), 220)
-    this.makeButton(GAME_WIDTH / 2, y, '🎨 主题', () => this.cycleTheme(), 220)
+    const cur = THEMES.find(t => t.id === this.themeId) ?? THEMES[0]
+    this.themeBtnText = this.makeButton(GAME_WIDTH / 2, y, `🎨 ${cur.emojis[0]}`, () => this.cycleTheme(), 220)
     this.makeButton(GAME_WIDTH / 2 + 240, y, '🔄 重开', () => this.scene.restart(), 220)
     this.createInstallButton()
   }
 
-  private makeButton(x: number, y: number, label: string, onTap: () => void, w = 200): void {
+  private makeButton(x: number, y: number, label: string, onTap: () => void, w = 200): Phaser.GameObjects.Text {
     const h = 72
     const g = this.add.graphics({ x, y }).setDepth(5)
     g.fillStyle(0x2e4a7d, 1)
@@ -183,7 +187,7 @@ export class GameScene extends Phaser.Scene {
     g.lineStyle(2, 0xffffff, 0.25)
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, 20)
     const t = this.add.text(x, y, label, {
-      fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
+      fontFamily: 'Apple Color Emoji, PingFang SC, Microsoft YaHei, sans-serif',
       fontSize: '30px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -195,6 +199,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: [g, t], scale: 0.92, duration: 70, yoyo: true })
       onTap()
     })
+    return t
   }
 
   /** 顶部"添加到桌面"按钮：仅未安装且环境支持时显示 */
@@ -218,10 +223,10 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** 切换图标主题：波浪翻面动画 */
+  /** 切换图标主题：波浪翻面动画。只换纹理不碰棋盘数据，任何时刻（含消除动画中）都安全即时 */
   private async cycleTheme(): Promise<void> {
-    if (this.busy) return
-    this.busy = true
+    if (this.themeSwitching) return
+    this.themeSwitching = true
     this.clearSelection()
     const idx = THEMES.findIndex(t => t.id === this.themeId)
     const next = THEMES[(idx + 1) % THEMES.length]
@@ -229,13 +234,14 @@ export class GameScene extends Phaser.Scene {
     localStorage.setItem(THEME_KEY, next.id)
     this.sfx.theme()
     this.showToast(`主题：${next.emojis.join(' ')} ${next.name}组`)
+    this.themeBtnText?.setText(`🎨 ${next.emojis[0]}`)
 
     const jobs: Promise<void>[] = []
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const s = this.sprites[r][c]
-        const color = this.board.grid[r][c]!
-        if (!s) continue
+        const color = this.board.grid[r][c]
+        if (!s || color === null) continue
         jobs.push(
           tweenP(this, {
             targets: s,
@@ -258,7 +264,7 @@ export class GameScene extends Phaser.Scene {
     }
     await Promise.all(jobs)
     await new Promise(res => this.time.delayedCall(240, () => res(undefined)))
-    this.busy = false
+    this.themeSwitching = false
   }
 
   // ---------- 棋盘精灵 ----------
