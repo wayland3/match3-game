@@ -26,7 +26,7 @@ export interface Theme {
 
 /** 图标主题：与 COLORS 一一对应，共 4 组 */
 export const THEMES: Theme[] = [
-  { id: 'animal', name: '动物', emojis: ['🐷', '🐥', '🐸', '🐧', '🦄'] },
+  { id: 'animal', name: '动物', emojis: ['🐷', '🐥', '🐸', '🐧', '🐶'] },
   { id: 'fruit', name: '水果', emojis: ['🍓', '🍊', '🍋', '🫐', '🍇'] },
   { id: 'sky', name: '星空', emojis: ['☀️', '🌙', '⭐', '🌈', '❄️'] },
   { id: 'sweet', name: '甜品', emojis: ['🍩', '🍪', '🧁', '🍫', '🍦'] }
