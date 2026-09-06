@@ -462,6 +462,12 @@ export class GameScene extends Phaser.Scene {
       this.showComboBanner(combo)
     }
 
+    // 大消除：冲击波 + 震屏
+    const cx = matches.cells.reduce((s, p) => s + cellX(p.col), 0) / matches.cells.length
+    const cy = matches.cells.reduce((s, p) => s + cellY(p.row), 0) / matches.cells.length
+    if (matches.cells.length >= 4 || combo >= 2) this.shockwave(cx, cy)
+    if (matches.cells.length >= 5 || combo >= 3) this.cameras.main.shake(130, 0.006)
+
     // 消除动画：先弹一下再缩没（每个方块错开 15ms），精确等待全部完成
     const gained = matches.cells.length * SCORE_PER_BLOCK * combo
     this.addScore(gained)
@@ -635,7 +641,7 @@ export class GameScene extends Phaser.Scene {
 
   private burst(x: number, y: number, color: number): void {
     const emitter = this.add.particles(x, y, 'particle', {
-      speed: { min: 140, max: 380 },
+      speed: { min: 160, max: 460 },
       angle: { min: 0, max: 360 },
       scale: { start: 0.9, end: 0 },
       lifespan: { min: 260, max: 520 },
@@ -645,7 +651,7 @@ export class GameScene extends Phaser.Scene {
       blendMode: 'ADD'
     })
     emitter.setDepth(20)
-    emitter.explode(16, x, y)
+    emitter.explode(24, x, y)
     this.time.delayedCall(700, () => emitter.destroy())
     // 星星点缀
     if (Math.random() < 0.5) {
@@ -663,41 +669,79 @@ export class GameScene extends Phaser.Scene {
   }
 
   private floatScore(x: number, y: number, text: string, combo: number): void {
-    const size = 22 + Math.min(combo, 6) * 5
+    const size = 26 + Math.min(combo, 8) * 7
+    const colors = ['#fff4b8', '#ffd93d', '#ffb347', '#ff8c42', '#ff6b6b']
+    const color = colors[Math.min(combo - 1, 4)]
     const t = this.add
       .text(x, y, text, {
         fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
         fontSize: `${size}px`,
-        color: '#ffd93d',
+        color,
         fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 4,
+        stroke: '#4a2500',
+        strokeThickness: 8,
+        shadow: { offsetX: 0, offsetY: 4, color: '#000000', blur: 8, fill: true },
         resolution: TEXT_RES
       })
       .setOrigin(0.5)
       .setDepth(30)
-    this.tweens.add({
-      targets: t,
-      y: y - 80,
-      alpha: 0,
-      duration: 750,
-      ease: 'Cubic.easeOut',
-      onComplete: () => t.destroy()
+      .setScale(0)
+      .setAngle(Phaser.Math.Between(-8, 8))
+    this.tweens.chain({
+      tweens: [
+        { targets: t, scale: 1.4, duration: 130, ease: 'Back.easeOut' },
+        { targets: t, scale: 1, duration: 70 },
+        { targets: t, y: y - 95, alpha: 0, duration: 620, ease: 'Cubic.easeOut', onComplete: () => t.destroy() }
+      ]
     })
+  }
+
+  /** 冲击波：消除中心扩散双圆环 */
+  private shockwave(x: number, y: number): void {
+    for (let i = 0; i < 2; i++) {
+      const ring = this.add.image(x, y, 'ring').setDepth(19).setTint(0xffffff).setScale(0.15).setAlpha(0.9)
+      this.tweens.add({
+        targets: ring,
+        scale: 1.4 + i * 0.6,
+        alpha: 0,
+        duration: 380,
+        delay: i * 70,
+        ease: 'Cubic.easeOut',
+        onComplete: () => ring.destroy()
+      })
+    }
   }
 
   private showComboBanner(combo: number): void {
     this.comboBanner?.destroy()
     const word = COMBO_WORDS[Math.min(combo, 5)] ?? '疯狂连消'
     const color = ['#ffffff', '#ffd93d', '#ff9f43', '#ff6b6b', '#b983ff'][Math.min(combo - 2, 4)]
+    const cx = GAME_WIDTH / 2
+    const cy = boardOriginY + boardPixelHeight / 2 - 40
+    // 背后光晕
+    const halo = this.add
+      .image(cx, cy, 'ring')
+      .setDepth(39)
+      .setTint(0xffffff)
+      .setAlpha(0.35)
+      .setScale(0.2)
+    this.tweens.add({
+      targets: halo,
+      scale: 2.6,
+      alpha: 0,
+      duration: 700,
+      ease: 'Cubic.easeOut',
+      onComplete: () => halo.destroy()
+    })
     const t = this.add
-      .text(GAME_WIDTH / 2, boardOriginY + boardPixelHeight / 2 - 40, `${word} x${combo}`, {
+      .text(cx, cy, `${word} x${combo}`, {
         fontFamily: 'PingFang SC, Microsoft YaHei, sans-serif',
         fontSize: `${58 + Math.min(combo, 6) * 6}px`,
         color,
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 10,
+        strokeThickness: 12,
+        shadow: { offsetX: 0, offsetY: 6, color: '#000000', blur: 10, fill: true },
         resolution: TEXT_RES
       })
       .setOrigin(0.5)
@@ -706,12 +750,36 @@ export class GameScene extends Phaser.Scene {
     this.comboBanner = t
     this.tweens.chain({
       tweens: [
-        { targets: t, scale: 1.25, duration: 180, ease: 'Back.easeOut' },
-        { targets: t, scale: 1, duration: 100 },
-        { targets: t, scale: 1, alpha: 1, duration: 450 },
-        { targets: t, alpha: 0, scale: 1.3, duration: 280, onComplete: () => t.destroy() }
+        { targets: t, scale: 1.3, duration: 160, ease: 'Back.easeOut' },
+        { targets: t, scale: 1, duration: 90 },
+        { targets: t, x: cx + 10, duration: 45, yoyo: true, repeat: 3 },
+        { targets: t, alpha: 1, duration: 380 },
+        { targets: t, alpha: 0, scale: 1.35, duration: 260, onComplete: () => t.destroy() }
       ]
     })
+    // 星星迸发
+    for (let i = 0; i < 8; i++) {
+      const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.5
+      const dist = 150 + Math.random() * 110
+      const star = this.add
+        .image(cx, cy, 'star')
+        .setDepth(41)
+        .setTint([0xffd93d, 0xff9f43, 0xffffff][i % 3])
+        .setScale(0.2)
+        .setAlpha(1)
+      this.tweens.add({
+        targets: star,
+        x: cx + Math.cos(ang) * dist,
+        y: cy + Math.sin(ang) * dist,
+        scale: 0.65,
+        angle: Phaser.Math.Between(-200, 200),
+        alpha: 0,
+        duration: 550 + Math.random() * 150,
+        delay: 120,
+        ease: 'Cubic.easeOut',
+        onComplete: () => star.destroy()
+      })
+    }
   }
 
   private showToast(msg: string): void {
@@ -765,14 +833,36 @@ export class GameScene extends Phaser.Scene {
 
   // ---------- 分数 ----------
 
+  private scoreDisplay = { v: 0 }
+
   private addScore(gained: number): void {
     this.score += gained
-    this.scoreText.setText(`分数 ${this.score}`)
-    this.tweens.add({ targets: this.scoreText, scale: { from: 1.25, to: 1 }, duration: 180, ease: 'Cubic.easeOut' })
+    // 数字滚动跳字
+    this.tweens.killTweensOf(this.scoreDisplay)
+    this.tweens.add({
+      targets: this.scoreDisplay,
+      v: this.score,
+      duration: 420,
+      ease: 'Cubic.easeOut',
+      onUpdate: () => this.scoreText.setText(`分数 ${Math.round(this.scoreDisplay.v)}`),
+      onComplete: () => this.scoreText.setText(`分数 ${this.score}`)
+    })
+    this.tweens.killTweensOf(this.scoreText)
+    this.tweens.add({
+      targets: this.scoreText,
+      scale: { from: 1.45, to: 1 },
+      duration: 300,
+      ease: 'Back.easeOut'
+    })
+    // 大分震屏
+    if (gained >= 100) {
+      this.cameras.main.shake(160, 0.008)
+    }
     if (this.score > this.best) {
       this.best = this.score
       localStorage.setItem(BEST_KEY, String(this.best))
       this.bestText.setText(`最高 ${this.best}`)
+      this.tweens.add({ targets: this.bestText, scale: { from: 1.3, to: 1 }, duration: 250, ease: 'Back.easeOut' })
     }
   }
 }
