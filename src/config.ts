@@ -1,0 +1,29 @@
+export const GAME_WIDTH = 720
+export const GAME_HEIGHT = 1280
+
+export const ROWS = 8
+export const COLS = 8
+export const COLOR_COUNT = 5
+
+export const BLOCK_SIZE = 76
+export const BLOCK_GAP = 6
+
+export const COLORS: number[] = [
+  0xff6b6b, // 红
+  0xffd93d, // 黄
+  0x6bcb77, // 绿
+  0x4d96ff, // 蓝
+  0xb983ff  // 紫
+]
+
+export const COLOR_NAMES = ['红', '黄', '绿', '蓝', '紫']
+
+export const SCORE_PER_BLOCK = 10
+
+export const boardPixelWidth = COLS * (BLOCK_SIZE + BLOCK_GAP) + BLOCK_GAP
+export const boardPixelHeight = ROWS * (BLOCK_SIZE + BLOCK_GAP) + BLOCK_GAP
+export const boardOriginX = (GAME_WIDTH - boardPixelWidth) / 2
+export const boardOriginY = 320
+
+export const cellX = (col: number) => boardOriginX + BLOCK_GAP + col * (BLOCK_SIZE + BLOCK_GAP) + BLOCK_SIZE / 2
+export const cellY = (row: number) => boardOriginY + BLOCK_GAP + row * (BLOCK_SIZE + BLOCK_GAP) + BLOCK_SIZE / 2

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# ts 编译产物
+src/**/*.js
+test/**/*.js
